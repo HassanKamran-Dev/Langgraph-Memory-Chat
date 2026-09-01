@@ -1,0 +1,2 @@
+# Exclude static frontend files from GitHub language statistics so Python is recognized as the primary language
+static/* linguist-vendored
