@@ -144,6 +144,20 @@
       background: rgba(139, 131, 124, 0.2);
       border-radius: 9999px;
     }
+    /* Streaming Cursor Animation */
+    .streaming-cursor::after {
+      content: '▋';
+      display: inline-block;
+      vertical-align: baseline;
+      color: #e07a5f;
+      animation: blink 0.8s infinite;
+      margin-left: 2px;
+      font-size: 0.85em;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
   </style>
 </head>
 <body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative antialiased selection:bg-primary-container selection:text-on-primary-container">
@@ -167,7 +181,7 @@
   </header>
 
   <!-- Main Chat Canvas -->
-  <main id="chat-messages" class="flex-grow w-full max-w-container-max-width mx-auto px-margin-mobile md:px-gutter pt-8 pb-40 flex flex-col gap-stack-gap-md md:gap-stack-gap-lg overflow-y-auto">
+  <main id="chat-messages" class="flex-grow w-full max-w-container-max-width mx-auto px-margin-mobile md:px-gutter pt-8 pb-64 flex flex-col gap-stack-gap-md md:gap-stack-gap-lg">
     <!-- Initial Assistant Welcome Message from Stitch Design -->
     <div class="flex w-full fade-in-up" style="animation-delay: 0.1s;">
       <div class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">

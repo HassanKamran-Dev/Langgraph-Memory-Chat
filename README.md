@@ -1,28 +1,44 @@
 # Pure Conversation - LangGraph Chatbot 🤖✨
 
-A minimalist, modern conversational AI application powered by **LangGraph**, **Hugging Face (Llama 3.1-8B-Instruct)**, and **FastAPI**, with a frontend designed directly from the Google Stitch **"Pure Conversation UI"** design system.
+A minimalist, high-performance conversational AI application powered by **LangGraph**, **Groq** (with Hugging Face support), and **FastAPI**, featuring a frontend crafted directly from the Google Stitch **"Pure Conversation UI"** design system.
 
 ---
 
 ## 🌟 Features
 
-- **🧠 Stateful LangGraph Architecture**: Built on a compiled `StateGraph` with in-memory checkpointing (`MemorySaver`) for multi-turn conversation memory and context retention.
-- **⚡ High-Performance FastAPI Backend**: Serves static UI assets and exposes asynchronous `/api/chat` and `/api/status` endpoints.
+- **🧠 Stateful LangGraph Architecture**: Built on a compiled `StateGraph` with in-memory checkpointing (`MemorySaver`) for multi-turn conversation memory and context retention across threads.
+- **⚡ Real-Time SSE Token Streaming**: Streams tokens from LangGraph directly to the frontend using Server-Sent Events (SSE) via `/api/chat/stream`.
+- **✨ Silky Smooth Typing Animation**: Frontend token queue with `requestAnimationFrame` ensures fluid, typewriter-like rendering without browser stutter or jumping.
+- **💭 Live Thought Process UI**: Displays expandable live reasoning/thinking accordions for reasoning models (e.g. `openai/gpt-oss-120b`, DeepSeek-R1) before collapsing seamlessly into the final answer.
+- **⏹️ Stop Generation**: Built-in `AbortController` allows users to pause or cancel response generation mid-stream.
+- **📜 Smart Auto-Scroll**: High-performance scrolling keeps up with incoming tokens while automatically pausing if you scroll up to read earlier messages.
+- **🎨 Premium Stitch Aesthetics**: Clean typography, warm color palette, code syntax styling, and glowing streaming cursors.
 
 ---
 
 ## 🏗️ Architecture
 
 ```mermaid
-graph LR
-    A[Web Browser / UI] -->|POST /api/chat| B[FastAPI Server]
-    B -->|invoke with thread_id| C[LangGraph ChatBot]
-    C -->|lookup checkpoint| D[(MemorySaver Checkpointer)]
-    C -->|invoke prompt + history| E[HuggingFace Llama-3.1-8B]
-    E -->|AI response| C
-    C -->|save new state| D
-    C -->|return message| B
-    B -->|JSON Response| A
+sequenceDiagram
+    autonumber
+    actor User as Web Browser (app.js)
+    participant Server as FastAPI Server (/api/chat/stream)
+    participant Graph as LangGraph StateGraph
+    participant Mem as MemorySaver Checkpointer
+    participant LLM as Groq / Hugging Face LLM
+
+    User->>Server: POST /api/chat/stream { message, thread_id }
+    Server->>Graph: astream(input, config={thread_id}, stream_mode="messages")
+    Graph->>Mem: Load conversation history for thread_id
+    Graph->>LLM: ainvoke(messages + history)
+    loop Stream Chunks
+        LLM-->>Graph: AIMessageChunk (reasoning / content)
+        Graph-->>Server: yield (chunk, metadata)
+        Server-->>User: SSE event: data: {"type": "reasoning" | "token", "content": "..."}
+        User->>User: Smooth buffer render & auto-scroll
+    end
+    Graph->>Mem: Persist new state checkpoint
+    Server-->>User: SSE event: data: {"type": "done", "thread_id": "..."}
 ```
 
 ---
@@ -31,16 +47,16 @@ graph LR
 
 ```text
 Simple-Chatbot/
-├── .env.example            # Environment variables template
+├── .env.example            # Environment variables template (Groq & Hugging Face)
 ├── .gitignore              # Git ignore rules for virtualenv & secrets
 ├── README.md               # Project documentation
 ├── requirements.txt        # Python package dependencies
-├── langgraph_backend.py    # LangGraph StateGraph, MemorySaver & Hugging Face LLM
-├── server.py               # FastAPI server and chat API endpoint
+├── langgraph_backend.py    # LangGraph StateGraph, MemorySaver & LLM configuration
+├── server.py               # FastAPI server and streaming SSE endpoints
 └── static/
-    ├── index.html          # Stitch "Pure Conversation" HTML template
-    ├── style.css           # Tailwind configuration & micro-animations
-    └── app.js              # Client-side chat logic & thread management
+    ├── index.html          # Stitch "Pure Conversation" layout
+    ├── style.css           # Micro-animations & custom scrollbar styles
+    └── app.js              # Streaming consumer, markdown formatter & UI state
 ```
 
 ---
@@ -49,7 +65,9 @@ Simple-Chatbot/
 
 ### 1. Prerequisites
 - **Python 3.10+**
-- A **Hugging Face API Token** (Access to `meta-llama/Llama-3.1-8B-Instruct` or your preferred model). Get one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
+- An API Key:
+  - **Groq API Key (Recommended)**: Get a free key from [console.groq.com/keys](https://console.groq.com/keys).
+  - *or* **Hugging Face Token**: Get one at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens).
 
 ### 2. Clone the Repository
 ```bash
@@ -80,13 +98,17 @@ Create a `.env` file in the root directory (or copy from `.env.example`):
 cp .env.example .env
 ```
 
-Add your Hugging Face API key inside `.env`:
+Add your API key inside `.env`:
 ```env
-HUGGINGFACEHUB_API_TOKEN=hf_your_actual_token_here
+# Groq (Recommended)
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Hugging Face (Optional alternative)
+HUGGINGFACEHUB_API_TOKEN=hf_your_token_here
 ```
 
 ### 6. Run the Application
-Start the FastAPI server using Uvicorn:
+Start the FastAPI server with Uvicorn:
 ```bash
 python -m uvicorn server:app --host 127.0.0.1 --port 8000 --reload
 ```
@@ -96,26 +118,48 @@ Open your browser and navigate to:
 
 ---
 
-## 🛠️ Customization
+## 🛠️ Model Configuration
 
-### Changing the LLM Model
-You can change the underlying model in [`langgraph_backend.py`](langgraph_backend.py):
+You can customize the model and settings inside [`langgraph_backend.py`](langgraph_backend.py):
+
+### 1. Instant Streaming (Fast Chat)
+For immediate word-by-word streaming with zero delay:
 ```python
-llm = HuggingFaceEndpoint(
-    repo_id="meta-llama/Llama-3.1-8B-Instruct",  # Change to any Hugging Face repo
-    task="text-generation",
-    max_new_tokens=512,
-    do_sample=False,
-    huggingfacehub_api_token=hf_token,
+llm = ChatGroq(
+    model="qwen/qwen3.8-27b",  # or "qwen/qwen3.6-27b"
+    temperature=0.7,
+    streaming=True
 )
 ```
 
-### Adding LangGraph Nodes & Tools
-To add tool-calling or multi-step reasoning, modify the `StateGraph` definition in [`langgraph_backend.py`](langgraph_backend.py):
+### 2. Reasoning Models (Deep Thought Process)
+To stream the model's internal thinking process in a collapsible "Thinking..." block before receiving the answer:
 ```python
-# Add your custom nodes
-graph.add_node("chat_node", chat_node)
-# Add conditional edges or tool execution nodes
-graph.add_edge(START, "chat_node")
-graph.add_edge("chat_node", END)
+llm = ChatGroq(
+    model="openai/gpt-oss-120b",
+    temperature=0.7,
+    streaming=True
+)
 ```
+
+### 3. Hugging Face Inference
+To use Hugging Face instead, uncomment the `HuggingFaceEndpoint` configuration:
+```python
+llm = HuggingFaceEndpoint(
+    repo_id="meta-llama/Llama-3.1-8B-Instruct",
+    task="text-generation",
+    max_new_tokens=512,
+    huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"),
+)
+```
+
+---
+
+## 📡 API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/chat/stream` | Real-time Server-Sent Events (SSE) streaming endpoint |
+| `POST` | `/api/chat` | Synchronous / non-streaming JSON response endpoint |
+| `GET` | `/api/status` | Health check verifying LangGraph backend compilation status |
+| `GET` | `/` | Serves the Pure Conversation web application |

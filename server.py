@@ -1,8 +1,9 @@
 import os
 import sys
+import json
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -51,6 +52,71 @@ async def get_status():
         return {"status": "ok", "backend_ready": chat_bot is not None}
     except Exception as e:
         return {"status": "error", "detail": str(e), "backend_ready": False}
+
+
+@app.post("/api/chat/stream")
+async def chat_stream_endpoint(request: ChatRequest):
+    message_text = request.message.strip()
+    thread_id = request.thread_id.strip() or "default-thread"
+
+    if not message_text:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    async def event_generator():
+        try:
+            chat_bot = get_chat_bot()
+            from langchain_core.messages import HumanMessage
+
+            config = {"configurable": {"thread_id": thread_id}}
+            input_data = {"messages": [HumanMessage(content=message_text)]}
+
+            async for chunk, metadata in chat_bot.astream(
+                input_data, config=config, stream_mode="messages"
+            ):
+                # Support reasoning/thinking tokens (e.g. gpt-oss-120b, DeepSeek-R1)
+                if hasattr(chunk, "additional_kwargs") and chunk.additional_kwargs:
+                    reasoning = (
+                        chunk.additional_kwargs.get("reasoning_content")
+                        or chunk.additional_kwargs.get("reasoning")
+                    )
+                    if reasoning:
+                        data = json.dumps({"type": "reasoning", "content": reasoning})
+                        yield f"data: {data}\n\n"
+
+                # Direct token content
+                if hasattr(chunk, "content") and chunk.content:
+                    content = chunk.content
+                    if isinstance(content, str) and content:
+                        data = json.dumps({"type": "token", "content": content})
+                        yield f"data: {data}\n\n"
+                    elif isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, str) and item:
+                                data = json.dumps({"type": "token", "content": item})
+                                yield f"data: {data}\n\n"
+                            elif isinstance(item, dict) and "text" in item:
+                                data = json.dumps({"type": "token", "content": item["text"]})
+                                yield f"data: {data}\n\n"
+
+            # Yield done event
+            data = json.dumps({"type": "done", "thread_id": thread_id})
+            yield f"data: {data}\n\n"
+
+        except Exception as e:
+            error_msg = str(e)
+            print(f"Error during streaming: {error_msg}")
+            data = json.dumps({"type": "error", "message": error_msg})
+            yield f"data: {data}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @app.post("/api/chat")
