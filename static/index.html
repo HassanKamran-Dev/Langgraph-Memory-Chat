@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>Chat Bot</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-highest": "#e3ded9",
+            "on-error": "#ffffff",
+            "surface-bright": "#fffdfb",
+            "on-surface": "#2d2a27",
+            "on-secondary": "#ffffff",
+            "inverse-surface": "#3d3936",
+            "tertiary": "#8a6642",
+            "surface-tint": "#e07a5f",
+            "secondary-container": "#f8ebd8",
+            "on-surface-variant": "#5e5853",
+            "secondary": "#7a6a5a",
+            "on-secondary-fixed-variant": "#594a3a",
+            "secondary-fixed-dim": "#e3d2bd",
+            "error": "#ba1a1a",
+            "on-tertiary-fixed": "#332211",
+            "secondary-fixed": "#f8ebd8",
+            "on-error-container": "#93000a",
+            "on-primary-container": "#ffe4db",
+            "on-secondary-container": "#2c1c0e",
+            "tertiary-fixed": "#ffdfbe",
+            "surface-container-low": "#f4f1ee",
+            "outline": "#8b837c",
+            "on-primary-fixed": "#3d1300",
+            "on-primary": "#ffffff",
+            "inverse-primary": "#ffb59d",
+            "primary-fixed-dim": "#ffb59d",
+            "surface-container-lowest": "#ffffff",
+            "surface": "#fdfcf9",
+            "surface-variant": "#eeeae5",
+            "on-tertiary": "#ffffff",
+            "on-primary-fixed-variant": "#782d13",
+            "on-tertiary-container": "#2c1a08",
+            "primary-container": "#ffdbcd",
+            "surface-dim": "#e8e5e0",
+            "background": "#fbf9f6",
+            "error-container": "#ffdad6",
+            "surface-container": "#efebe6",
+            "inverse-on-surface": "#f6f3ee",
+            "on-tertiary-fixed-variant": "#5c4021",
+            "primary-fixed": "#ffdbcd",
+            "on-secondary-fixed": "#2c1c0e",
+            "tertiary-fixed-dim": "#e3c29f",
+            "on-background": "#2d2a27",
+            "surface-container-high": "#eae5df",
+            "outline-variant": "#d3cbc3",
+            "tertiary-container": "#6f4c28",
+            "primary": "#e07a5f"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "2xl": "1rem",
+            "3xl": "1.5rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "container-max-width": "800px",
+            "stack-gap-lg": "32px",
+            "stack-gap-md": "16px",
+            "gutter": "24px",
+            "margin-mobile": "16px",
+            "unit": "4px"
+          },
+          "fontFamily": {
+            "body-md": ["Inter", "sans-serif"],
+            "body-lg": ["Inter", "sans-serif"],
+            "headline-md": ["Inter", "sans-serif"],
+            "body-sm": ["Inter", "sans-serif"],
+            "label-md": ["Inter", "sans-serif"],
+            "headline-lg": ["Inter", "sans-serif"],
+            "code-md": ["JetBrains Mono", "monospace"],
+            "serif": ["Lora", "serif"]
+          },
+          "fontSize": {
+            "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+            "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+            "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+            "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+            "headline-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "code-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }]
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .fade-in-up {
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    textarea {
+      resize: none;
+      overflow: hidden;
+      min-height: 48px;
+      max-height: 150px;
+    }
+    /* Typing Dots Animation */
+    .typing-dots .dot {
+      width: 6px;
+      height: 6px;
+      background-color: #5e5853;
+      border-radius: 50%;
+      display: inline-block;
+      animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dots .dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dots .dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typingBounce {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 131, 124, 0.2);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative antialiased selection:bg-primary-container selection:text-on-primary-container">
+
+  <!-- TopAppBar -->
+  <header class="bg-surface/80 backdrop-blur-md border-b border-surface-variant sticky top-0 z-40">
+    <div class="flex justify-between items-center w-full px-margin-mobile md:px-gutter max-w-container-max-width mx-auto h-16">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-fixed shadow-sm">
+          <span class="material-symbols-outlined text-[20px]">temp_preferences_custom</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="font-serif text-[22px] font-medium text-on-surface leading-tight">Chat Bot</span>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500/80"></span>
+            <span class="font-body-sm text-[12px] text-on-surface-variant">Online</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Chat Canvas -->
+  <main id="chat-messages" class="flex-grow w-full max-w-container-max-width mx-auto px-margin-mobile md:px-gutter pt-8 pb-40 flex flex-col gap-stack-gap-md md:gap-stack-gap-lg overflow-y-auto">
+    <!-- Initial Assistant Welcome Message from Stitch Design -->
+    <div class="flex w-full fade-in-up" style="animation-delay: 0.1s;">
+      <div class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">
+        <p class="font-body-md text-body-md leading-relaxed">Hello. How can I assist you today? I'm designed to be fast, clear, and out of your way.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Typing Indicator (Hidden by default) -->
+  <div id="typing-indicator" class="hidden max-w-container-max-width mx-auto w-full px-margin-mobile md:px-gutter mb-28">
+    <div class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 py-3 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] items-center gap-2">
+      <span class="text-[13px] text-on-surface-variant">Thinking</span>
+      <div class="typing-dots flex gap-1 items-center">
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Input Area -->
+  <div class="fixed bottom-0 w-full z-30 pb-margin-mobile md:pb-gutter px-margin-mobile md:px-gutter pt-16 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
+    <div class="max-w-container-max-width mx-auto relative pointer-events-auto">
+      <form id="chat-form" class="relative flex items-end bg-surface-container-lowest shadow-[0_12px_40px_rgba(139,121,105,0.15)] rounded-full focus-within:shadow-[0_12px_40px_rgba(224,122,95,0.15)] transition-all duration-300 border border-surface-variant">
+        <textarea 
+          id="chat-input" 
+          rows="1" 
+          placeholder="Message..." 
+          class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 py-4 md:py-5 pl-6 pr-16 rounded-full m-0 block"
+        ></textarea>
+        <button 
+          type="submit" 
+          id="send-btn" 
+          class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+        >
+          <span class="material-symbols-outlined text-[20px]">send</span>
+        </button>
+      </form>
+      <div class="text-center mt-3 pb-2 text-[12px] text-on-surface-variant/60 font-body-sm">
+        AI can make mistakes. Verify important information.
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

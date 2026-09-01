@@ -1,0 +1,234 @@
+/* Pure Conversation UI Custom Styling */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Typing Dots Animation */
+.typing-dots .dot {
+  width: 6px;
+  height: 6px;
+  background-color: #5e5853;
+  border-radius: 50%;
+  display: inline-block;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dots .dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+.typing-dots .dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typingBounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Prompt chips hover */
+.prompt-chip {
+  transition: all 0.2s ease;
+}
+.prompt-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(45, 42, 39, 0.05);
+}
+
+/* User & Assistant Bubble Styling */
+.user-bubble {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border-radius: 26px 26px 4px 26px;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.22);
+}
+
+.bot-bubble {
+  background: #ffffff;
+  color: #2d2a27;
+  border-radius: 26px 26px 26px 4px;
+  border: 1px solid rgba(211, 203, 195, 0.5);
+  box-shadow: 0 6px 24px rgba(45, 42, 39, 0.04);
+}
+
+/* Markdown Typography within Bot Bubble */
+.prose-chat {
+  font-size: 15.5px;
+  line-height: 1.68;
+  color: #2d2a27;
+}
+
+.prose-chat p {
+  margin-bottom: 0.75rem;
+}
+
+.prose-chat p:last-child {
+  margin-bottom: 0;
+}
+
+.prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 {
+  font-family: 'Lora', serif;
+  font-weight: 600;
+  color: #191c1e;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.35;
+}
+
+.prose-chat h1 { font-size: 1.35rem; }
+.prose-chat h2 { font-size: 1.2rem; }
+.prose-chat h3 { font-size: 1.1rem; }
+
+.prose-chat ul, .prose-chat ol {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.4rem;
+}
+
+.prose-chat ul {
+  list-style-type: disc;
+}
+
+.prose-chat ol {
+  list-style-type: decimal;
+}
+
+.prose-chat li {
+  margin-bottom: 0.35rem;
+}
+
+.prose-chat strong {
+  font-weight: 600;
+  color: #191c1e;
+}
+
+.prose-chat em {
+  font-style: italic;
+}
+
+.prose-chat blockquote {
+  border-left: 3px solid #2563eb;
+  padding-left: 0.85rem;
+  margin: 0.75rem 0;
+  color: #5e5853;
+  font-style: italic;
+  background: #fbf9f6;
+  border-radius: 0 8px 8px 0;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.prose-chat table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0;
+  font-size: 14px;
+}
+
+.prose-chat th, .prose-chat td {
+  padding: 8px 12px;
+  border: 1px solid #d3cbc3;
+  text-align: left;
+}
+
+.prose-chat th {
+  background-color: #f4f1ee;
+  font-weight: 600;
+}
+
+/* Inline Code */
+.prose-chat code:not(pre code) {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88em;
+  background-color: #efebe6;
+  color: #943700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 6px;
+}
+
+/* Code Snippet Box (Dark Theme per Stitch Design System) */
+.code-container {
+  background-color: #1e293b;
+  border-radius: 14px;
+  margin: 0.85rem 0;
+  overflow: hidden;
+  border: 1px solid #334155;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background-color: #0f172a;
+  border-bottom: 1px solid #334155;
+  font-size: 12px;
+  color: #94a3b8;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.copy-btn:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.code-container pre {
+  margin: 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: #f8fafc;
+}
+
+/* Smooth Ghost Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 131, 124, 0.25);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 131, 124, 0.45);
+}
