@@ -6,6 +6,10 @@ A minimalist, high-performance conversational AI application powered by **LangGr
 
 ## 🌟 Features
 
+- **🗂️ Collapsible Sidebar Navigation**: Sleek, responsive sidebar with a desktop toggle and mobile slide-over drawer with backdrop overlay.
+- **➕ One-Click New Chat**: Instantly initialize fresh conversation threads with the "+ New Chat" button or the `Ctrl+N` (`Cmd+N`) shortcut.
+- **💬 Recent Chats History**: Automatically saves conversations with titles derived from your initial prompt, displays active thread indicators, and allows one-click switching and individual chat deletion.
+- **💾 Local Persistence & Memory Continuity**: Chat histories are preserved in browser `localStorage`, with each session maintaining its unique LangGraph `thread_id` so context is retained when jumping between chats.
 - **🧠 Stateful LangGraph Architecture**: Built on a compiled `StateGraph` with in-memory checkpointing (`MemorySaver`) for multi-turn conversation memory and context retention across threads.
 - **⚡ Real-Time SSE Token Streaming**: Streams tokens from LangGraph directly to the frontend using Server-Sent Events (SSE) via `/api/chat/stream`.
 - **✨ Silky Smooth Typing Animation**: Frontend token queue with `requestAnimationFrame` ensures fluid, typewriter-like rendering without browser stutter or jumping.
@@ -13,6 +17,17 @@ A minimalist, high-performance conversational AI application powered by **LangGr
 - **⏹️ Stop Generation**: Built-in `AbortController` allows users to pause or cancel response generation mid-stream.
 - **📜 Smart Auto-Scroll**: High-performance scrolling keeps up with incoming tokens while automatically pausing if you scroll up to read earlier messages.
 - **🎨 Premium Stitch Aesthetics**: Clean typography, warm color palette, code syntax styling, and glowing streaming cursors.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + N` / `Cmd + N` | Start a **New Chat** |
+| `Enter` | **Send** message |
+| `Shift + Enter` | Insert a **new line** in the message input |
+| `Esc` | Close mobile sidebar |
 
 ---
 
@@ -54,9 +69,9 @@ Simple-Chatbot/
 ├── langgraph_backend.py    # LangGraph StateGraph, MemorySaver & LLM configuration
 ├── server.py               # FastAPI server and streaming SSE endpoints
 └── static/
-    ├── index.html          # Stitch "Pure Conversation" layout
-    ├── style.css           # Micro-animations & custom scrollbar styles
-    └── app.js              # Streaming consumer, markdown formatter & UI state
+    ├── index.html          # Stitch "Pure Conversation" layout with responsive sidebar
+    ├── style.css           # Sidebar transitions, micro-animations & custom scrollbars
+    └── app.js              # Multi-session state, streaming SSE consumer & UI logic
 ```
 
 ---

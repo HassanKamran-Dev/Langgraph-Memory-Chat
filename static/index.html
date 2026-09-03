@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
+
 <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
   <title>Chat Bot</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&family=Lora:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&family=Lora:ital,wght@0,400..700;1,400..700&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
   <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
@@ -102,22 +107,25 @@
   </script>
   <style>
     .fade-in-up {
-      animation: fadeInUp 0.5s ease-out forwards;
+      animation: fadeInUp 0.4s ease-out forwards;
       opacity: 0;
       transform: translateY(10px);
     }
+
     @keyframes fadeInUp {
       to {
         opacity: 1;
         transform: translateY(0);
       }
     }
+
     textarea {
       resize: none;
       overflow: hidden;
       min-height: 48px;
       max-height: 150px;
     }
+
     /* Typing Dots Animation */
     .typing-dots .dot {
       width: 6px;
@@ -127,23 +135,26 @@
       display: inline-block;
       animation: typingBounce 1.4s infinite ease-in-out both;
     }
-    .typing-dots .dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dots .dot:nth-child(2) { animation-delay: -0.16s; }
+
+    .typing-dots .dot:nth-child(1) {
+      animation-delay: -0.32s;
+    }
+
+    .typing-dots .dot:nth-child(2) {
+      animation-delay: -0.16s;
+    }
+
     @keyframes typingBounce {
-      0%, 80%, 100% { transform: scale(0); opacity: 0.4; }
-      40% { transform: scale(1); opacity: 1; }
+      0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.4;
+      }
+      40% {
+        transform: scale(1);
+        opacity: 1;
+      }
     }
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(139, 131, 124, 0.2);
-      border-radius: 9999px;
-    }
+
     /* Streaming Cursor Animation */
     .streaming-cursor::after {
       content: '▋';
@@ -154,78 +165,169 @@
       margin-left: 2px;
       font-size: 0.85em;
     }
+
     @keyframes blink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0; }
     }
   </style>
 </head>
-<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col relative antialiased selection:bg-primary-container selection:text-on-primary-container">
 
-  <!-- TopAppBar -->
-  <header class="bg-surface/80 backdrop-blur-md border-b border-surface-variant sticky top-0 z-40">
-    <div class="flex justify-between items-center w-full px-margin-mobile md:px-gutter max-w-container-max-width mx-auto h-16">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-fixed shadow-sm">
-          <span class="material-symbols-outlined text-[20px]">temp_preferences_custom</span>
+<body class="bg-background text-on-background font-body-md h-screen w-screen overflow-hidden antialiased selection:bg-primary-container selection:text-on-primary-container">
+
+  <div class="flex h-full w-full overflow-hidden relative">
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebar-backdrop"
+      class="fixed inset-0 bg-on-surface/30 backdrop-blur-sm z-40 hidden transition-opacity duration-300 md:hidden">
+    </div>
+
+    <!-- Collapsible Sidebar -->
+    <aside id="sidebar"
+      class="fixed inset-y-0 left-0 z-50 flex flex-col w-72 bg-surface-container-low border-r border-surface-variant transition-all duration-300 ease-in-out md:static md:translate-x-0 -translate-x-full h-full shadow-xl md:shadow-none select-none shrink-0">
+      
+      <!-- Sidebar Header -->
+      <div class="flex items-center justify-between px-4 h-16 border-b border-surface-variant/60 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-fixed shadow-sm">
+            <span class="material-symbols-outlined text-[18px]">temp_preferences_custom</span>
+          </div>
+          <span class="font-serif text-[18px] font-semibold text-on-surface tracking-tight">Pure Chat</span>
         </div>
-        <div class="flex flex-col">
-          <span class="font-serif text-[22px] font-medium text-on-surface leading-tight">Chat Bot</span>
-          <div class="flex items-center gap-1.5 mt-0.5">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500/80"></span>
-            <span class="font-body-sm text-[12px] text-on-surface-variant">Online</span>
+
+        <div class="flex items-center">
+          <!-- Mobile Close Button -->
+          <button id="close-sidebar-btn"
+            class="p-1.5 rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors md:hidden"
+            title="Close sidebar">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+          <!-- Desktop Collapse Button -->
+          <button id="collapse-sidebar-btn"
+            class="hidden md:flex p-1.5 rounded-xl text-on-surface-variant hover:bg-surface-variant transition-colors"
+            title="Collapse sidebar">
+            <span class="material-symbols-outlined text-[20px]">left_panel_close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- New Chat Button -->
+      <div class="p-3 shrink-0">
+        <button id="new-chat-btn"
+          class="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-surface-container-lowest hover:bg-primary hover:text-on-primary text-on-surface border border-surface-variant/80 shadow-sm hover:shadow-md transition-all duration-200 group font-medium text-[14px]">
+          <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-[20px] text-primary group-hover:text-on-primary transition-colors">add</span>
+            <span>New Chat</span>
+          </div>
+          <span class="text-[11px] px-1.5 py-0.5 rounded bg-surface-variant/70 text-on-surface-variant group-hover:bg-primary-container/30 group-hover:text-on-primary font-code-md">Ctrl+N</span>
+        </button>
+      </div>
+
+      <!-- Recent Chats Container -->
+      <div class="flex-1 flex flex-col min-h-0 px-3 pb-2 overflow-hidden">
+        <div class="flex items-center justify-between px-2 py-2 shrink-0">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">Recent Chats</span>
+          <span id="chats-count" class="text-[11px] px-2 py-0.5 rounded-full bg-surface-variant/70 text-on-surface-variant font-code-md">0</span>
+        </div>
+
+        <!-- Chats List Viewport -->
+        <div id="recent-chats-list" class="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+          <!-- Dynamic chat items populated via app.js -->
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col h-full min-w-0 relative overflow-hidden bg-background">
+      
+      <!-- Top App Bar -->
+      <header class="bg-surface/90 backdrop-blur-md border-b border-surface-variant shrink-0 z-30">
+        <div class="flex justify-between items-center w-full px-4 md:px-6 h-16">
+          <div class="flex items-center gap-3 min-w-0">
+            <!-- Sidebar Toggle Button (visible on mobile or when desktop sidebar is collapsed) -->
+            <button id="toggle-sidebar-btn"
+              class="p-2 -ml-1.5 rounded-xl text-on-surface-variant hover:bg-surface-variant/70 transition-colors"
+              title="Toggle sidebar">
+              <span class="material-symbols-outlined text-[22px]">menu</span>
+            </button>
+            
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-9 h-9 rounded-full bg-primary-container shrink-0 flex items-center justify-center text-on-primary-fixed shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">temp_preferences_custom</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <span id="active-chat-title"
+                  class="font-serif text-[18px] md:text-[20px] font-medium text-on-surface leading-tight truncate max-w-[200px] sm:max-w-[360px] md:max-w-[500px]">
+                  New Chat
+                </span>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500/80"></span>
+                  <span class="font-body-sm text-[11px] text-on-surface-variant">Online</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button id="header-new-chat-btn"
+            class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface text-[13px] font-medium border border-surface-variant/80 shadow-xs transition-all"
+            title="Start new chat">
+            <span class="material-symbols-outlined text-[17px] text-primary">add</span>
+            <span class="hidden sm:inline">New Chat</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Message Canvas Viewport -->
+      <div id="chat-messages-container" class="flex-1 overflow-y-auto px-4 md:px-8 py-6 relative">
+        <div id="chat-messages"
+          class="w-full max-w-container-max-width mx-auto flex flex-col gap-stack-gap-md md:gap-stack-gap-lg pb-12">
+          <!-- Initial Assistant Welcome Message -->
+          <div class="flex w-full fade-in-up" style="animation-delay: 0.1s;">
+            <div
+              class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">
+              <p class="font-body-md text-body-md leading-relaxed">Hello. How can I assist you today? I'm designed to be fast, clear, and out of your way.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator"
+          class="hidden max-w-container-max-width mx-auto w-full mb-8">
+          <div
+            class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 py-3 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] items-center gap-2">
+            <span class="text-[13px] text-on-surface-variant">Thinking</span>
+            <div class="typing-dots flex gap-1 items-center">
+              <span class="dot"></span>
+              <span class="dot"></span>
+              <span class="dot"></span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </header>
 
-  <!-- Main Chat Canvas -->
-  <main id="chat-messages" class="flex-grow w-full max-w-container-max-width mx-auto px-margin-mobile md:px-gutter pt-8 pb-64 flex flex-col gap-stack-gap-md md:gap-stack-gap-lg">
-    <!-- Initial Assistant Welcome Message from Stitch Design -->
-    <div class="flex w-full fade-in-up" style="animation-delay: 0.1s;">
-      <div class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">
-        <p class="font-body-md text-body-md leading-relaxed">Hello. How can I assist you today? I'm designed to be fast, clear, and out of your way.</p>
+      <!-- Bottom Input Area -->
+      <div class="shrink-0 w-full px-4 md:px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/95 to-transparent relative z-20">
+        <div class="max-w-container-max-width mx-auto relative">
+          <form id="chat-form"
+            class="relative flex items-end bg-surface-container-lowest shadow-[0_12px_40px_rgba(139,121,105,0.15)] rounded-full focus-within:shadow-[0_12px_40px_rgba(224,122,95,0.15)] transition-all duration-300 border border-surface-variant">
+            <textarea id="chat-input" rows="1" placeholder="Message..."
+              class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 py-4 md:py-4.5 pl-6 pr-16 rounded-full m-0 block"></textarea>
+            <button type="submit" id="send-btn"
+              class="absolute right-2 md:right-3 bottom-2 md:bottom-2 p-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+              title="Send message">
+              <span class="material-symbols-outlined text-[20px]">send</span>
+            </button>
+          </form>
+          <div class="text-center mt-2 text-[11px] text-on-surface-variant/60 font-body-sm">
+            AI can make mistakes. Verify important information.
+          </div>
+        </div>
       </div>
-    </div>
-  </main>
 
-  <!-- Typing Indicator (Hidden by default) -->
-  <div id="typing-indicator" class="hidden max-w-container-max-width mx-auto w-full px-margin-mobile md:px-gutter mb-28">
-    <div class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 py-3 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] items-center gap-2">
-      <span class="text-[13px] text-on-surface-variant">Thinking</span>
-      <div class="typing-dots flex gap-1 items-center">
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bottom Input Area -->
-  <div class="fixed bottom-0 w-full z-30 pb-margin-mobile md:pb-gutter px-margin-mobile md:px-gutter pt-16 bg-gradient-to-t from-background via-background/95 to-transparent pointer-events-none">
-    <div class="max-w-container-max-width mx-auto relative pointer-events-auto">
-      <form id="chat-form" class="relative flex items-end bg-surface-container-lowest shadow-[0_12px_40px_rgba(139,121,105,0.15)] rounded-full focus-within:shadow-[0_12px_40px_rgba(224,122,95,0.15)] transition-all duration-300 border border-surface-variant">
-        <textarea 
-          id="chat-input" 
-          rows="1" 
-          placeholder="Message..." 
-          class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 py-4 md:py-5 pl-6 pr-16 rounded-full m-0 block"
-        ></textarea>
-        <button 
-          type="submit" 
-          id="send-btn" 
-          class="absolute right-2 md:right-3 bottom-2 md:bottom-2.5 p-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-        >
-          <span class="material-symbols-outlined text-[20px]">send</span>
-        </button>
-      </form>
-      <div class="text-center mt-3 pb-2 text-[12px] text-on-surface-variant/60 font-body-sm">
-        AI can make mistakes. Verify important information.
-      </div>
     </div>
   </div>
 
   <script src="/static/app.js"></script>
 </body>
+
 </html>
