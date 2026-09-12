@@ -1,16 +1,27 @@
 import os
 import sys
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import rag_service
 
 # Load environment variables
 load_dotenv()
 
 app = FastAPI(title="Pure Conversation - LangGraph Chatbot")
+
+# Prevent browser from serving stale cached assets during development
+@app.middleware("http")
+async def add_cache_control_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,7 +53,14 @@ def get_chat_bot():
 
 @app.get("/")
 async def get_index():
-    return FileResponse("static/index.html")
+    return FileResponse(
+        "static/index.html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
 
 @app.get("/api/status")
@@ -52,6 +70,52 @@ async def get_status():
         return {"status": "ok", "backend_ready": chat_bot is not None}
     except Exception as e:
         return {"status": "error", "detail": str(e), "backend_ready": False}
+
+
+@app.post("/api/upload")
+async def upload_pdf(
+    file: UploadFile = File(...),
+    thread_id: str = Form("default-thread")
+):
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+
+    file_bytes = await file.read()
+    if not file_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    try:
+        res = rag_service.process_pdf(file_bytes, file.filename, thread_id=thread_id)
+        return {
+            "status": "success",
+            "filename": file.filename,
+            "pages": res.get("pages", 1),
+            "chunks": res.get("chunks", 0),
+            "total_thread_chunks": res.get("total_thread_chunks", 0),
+            "thread_id": thread_id,
+            "embedding_mode": res.get("embedding_mode", "hf")
+        }
+    except Exception as e:
+        print(f"[Upload Error]: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+
+
+@app.get("/api/documents")
+async def get_documents(thread_id: str = Query("default-thread")):
+    try:
+        docs = rag_service.get_documents(thread_id=thread_id)
+        return {"documents": docs, "thread_id": thread_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/documents/{filename}")
+async def delete_document(filename: str, thread_id: str = Query("default-thread")):
+    try:
+        success = rag_service.delete_document(filename, thread_id=thread_id)
+        return {"success": success, "filename": filename, "thread_id": thread_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/chat/stream")
@@ -73,6 +137,23 @@ async def chat_stream_endpoint(request: ChatRequest):
             async for chunk, metadata in chat_bot.astream(
                 input_data, config=config, stream_mode="messages"
             ):
+                node = metadata.get("langgraph_node")
+
+                # If from tools execution node, notify frontend with a status event
+                if node == "tools":
+                    data = json.dumps({"type": "status", "content": "Analyzing document excerpts..."})
+                    yield f"data: {data}\n\n"
+                    continue
+
+                # If LLM emits tool call request
+                if hasattr(chunk, "tool_calls") and chunk.tool_calls:
+                    data = json.dumps({"type": "status", "content": "Searching uploaded document..."})
+                    yield f"data: {data}\n\n"
+                    continue
+
+                if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks:
+                    continue
+
                 # Support reasoning/thinking tokens (e.g. gpt-oss-120b, DeepSeek-R1)
                 if hasattr(chunk, "additional_kwargs") and chunk.additional_kwargs:
                     reasoning = (
@@ -117,6 +198,7 @@ async def chat_stream_endpoint(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
 
 
 @app.post("/api/chat")

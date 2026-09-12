@@ -80,57 +80,83 @@
   font-size: 15.5px;
   line-height: 1.68;
   color: #2d2a27;
+  word-break: break-word;
+}
+
+.prose-chat > *:first-child {
+  margin-top: 0 !important;
+}
+
+.prose-chat > *:last-child {
+  margin-bottom: 0 !important;
 }
 
 .prose-chat p {
   margin-bottom: 0.75rem;
-}
-
-.prose-chat p:last-child {
-  margin-bottom: 0;
+  line-height: 1.68;
 }
 
 .prose-chat h1,
 .prose-chat h2,
 .prose-chat h3,
-.prose-chat h4 {
+.prose-chat h4,
+.prose-chat h5,
+.prose-chat h6 {
   font-family: 'Lora', serif;
   font-weight: 600;
   color: #191c1e;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   line-height: 1.35;
 }
 
 .prose-chat h1 {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  border-bottom: 1px solid #d3cbc3;
+  padding-bottom: 0.35rem;
 }
 
 .prose-chat h2 {
-  font-size: 1.2rem;
+  font-size: 1.28rem;
+  font-weight: 600;
 }
 
 .prose-chat h3 {
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: 600;
 }
 
-.prose-chat ul,
-.prose-chat ol {
-  margin-top: 0.5rem;
-  margin-bottom: 0.75rem;
-  padding-left: 1.4rem;
+.prose-chat h4,
+.prose-chat h5,
+.prose-chat h6 {
+  font-size: 1.02rem;
+  font-weight: 600;
 }
 
 .prose-chat ul {
   list-style-type: disc;
+  margin-top: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.35rem;
 }
 
 .prose-chat ol {
   list-style-type: decimal;
+  margin-top: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding-left: 1.35rem;
 }
 
 .prose-chat li {
   margin-bottom: 0.35rem;
+  line-height: 1.6;
+}
+
+.prose-chat li > ul,
+.prose-chat li > ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
 .prose-chat strong {
@@ -142,35 +168,105 @@
   font-style: italic;
 }
 
-.prose-chat blockquote {
-  border-left: 3px solid #2563eb;
-  padding-left: 0.85rem;
-  margin: 0.75rem 0;
-  color: #5e5853;
-  font-style: italic;
-  background: #fbf9f6;
-  border-radius: 0 8px 8px 0;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+.prose-chat del {
+  text-decoration: line-through;
+  opacity: 0.75;
 }
 
-.prose-chat table {
+/* Links */
+.prose-chat a {
+  color: #e07a5f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.prose-chat a:hover {
+  color: #c45b40;
+}
+
+/* Blockquotes */
+.prose-chat blockquote {
+  border-left: 3.5px solid #e07a5f;
+  padding: 0.4rem 0.9rem;
+  margin: 0.85rem 0;
+  color: #5e5853;
+  background: #f4f1ee;
+  border-radius: 0 8px 8px 0;
+  font-style: italic;
+}
+
+.prose-chat blockquote p {
+  margin-bottom: 0.3rem;
+}
+
+.prose-chat blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Horizontal Rule */
+.prose-chat hr {
+  border: 0;
+  height: 1px;
+  background-color: #d3cbc3;
+  margin: 1.25rem 0;
+}
+
+/* Table container & Responsive Tables */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 0.9rem 0;
+  border-radius: 10px;
+  border: 1px solid #d3cbc3;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(45, 42, 39, 0.04);
+}
+
+.table-container table {
   width: 100%;
   border-collapse: collapse;
-  margin: 0.75rem 0;
-  font-size: 14px;
+  font-size: 13.5px;
+  margin: 0;
+  min-width: 320px;
 }
 
-.prose-chat th,
-.prose-chat td {
-  padding: 8px 12px;
-  border: 1px solid #d3cbc3;
-  text-align: left;
-}
-
-.prose-chat th {
+.table-container th {
   background-color: #f4f1ee;
+  color: #2d2a27;
   font-weight: 600;
+  padding: 10px 14px;
+  border-bottom: 2px solid #d3cbc3;
+  border-right: 1px solid #d3cbc3;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table-container td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #efebe6;
+  border-right: 1px solid #efebe6;
+  text-align: left;
+  line-height: 1.55;
+  color: #2d2a27;
+}
+
+.table-container th:last-child,
+.table-container td:last-child {
+  border-right: none;
+}
+
+.table-container tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-container tbody tr:nth-child(even) {
+  background-color: #fcfbf9;
+}
+
+.table-container tbody tr:hover {
+  background-color: #f4f1ee;
 }
 
 /* Inline Code */
@@ -179,15 +275,17 @@
   font-size: 0.88em;
   background-color: #efebe6;
   color: #943700;
-  padding: 0.15rem 0.35rem;
+  padding: 0.15rem 0.4rem;
   border-radius: 6px;
+  border: 1px solid rgba(211, 203, 195, 0.5);
+  word-break: break-word;
 }
 
 /* Code Snippet Box (Dark Theme per Stitch Design System) */
 .code-container {
   background-color: #1e293b;
-  border-radius: 14px;
-  margin: 0.85rem 0;
+  border-radius: 12px;
+  margin: 0.9rem 0;
   overflow: hidden;
   border: 1px solid #334155;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
@@ -205,23 +303,34 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.code-lang {
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
 .copy-btn {
   display: flex;
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  padding: 4px 8px;
+  padding: 4px 9px;
   border-radius: 6px;
   background-color: rgba(255, 255, 255, 0.08);
   color: #e2e8f0;
   border: 1px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   transition: all 0.2s;
+  user-select: none;
 }
 
 .copy-btn:hover {
   background-color: rgba(255, 255, 255, 0.18);
   color: #ffffff;
+}
+
+.copy-btn:active {
+  transform: scale(0.96);
 }
 
 .code-container pre {
@@ -232,6 +341,13 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: #f8fafc;
+}
+
+.code-container pre code.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+  font-family: inherit;
+  font-size: inherit;
 }
 
 /* Sidebar Transitions and Layout */
@@ -279,4 +395,78 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 131, 124, 0.4);
+}
+
+/* Document Chip Pill */
+.doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background-color: #fdfcf9;
+  border: 1px solid #d3cbc3;
+  border-radius: 9999px;
+  font-size: 12px;
+  color: #2d2a27;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(45, 42, 39, 0.04);
+  transition: all 0.2s ease;
+}
+
+.doc-chip:hover {
+  border-color: #e07a5f;
+  background-color: #ffffff;
+}
+
+.doc-chip .delete-doc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: #8b837c;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-chip .delete-doc-btn:hover {
+  background-color: #ffdad6;
+  color: #ba1a1a;
+}
+
+/* Citation Callout Styling */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #ffdbcd;
+  color: #782d13;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-weight: 500;
+  margin: 0 2px;
+  vertical-align: baseline;
+}
+
+/* RAG Tool Execution Status Indicator */
+.tool-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background-color: #efebe6;
+  color: #7a6a5a;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }

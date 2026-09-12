@@ -4,6 +4,9 @@
 <head>
   <meta charset="utf-8" />
   <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Chat Bot</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <link
@@ -11,7 +14,14 @@
     rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/style.css?v=2" />
+  <!-- Local Highlight.js for Syntax Highlighting -->
+  <link rel="stylesheet" href="/static/atom-one-dark.min.css" />
+  <script src="/static/highlight.min.js"></script>
+  <!-- Local Marked.js for Markdown Rendering -->
+  <script src="/static/marked.min.js"></script>
+  <!-- Local DOMPurify for Secure HTML Sanitization -->
+  <script src="/static/purify.min.js"></script>
   <script id="tailwind-config">
     tailwind.config = {
       darkMode: "class",
@@ -166,6 +176,15 @@
       font-size: 0.85em;
     }
 
+    .streaming-cursor > p:last-child,
+    .streaming-cursor > h1:last-child,
+    .streaming-cursor > h2:last-child,
+    .streaming-cursor > h3:last-child,
+    .streaming-cursor > h4:last-child,
+    .streaming-cursor > li:last-child {
+      display: inline;
+    }
+
     @keyframes blink {
       0%, 100% { opacity: 1; }
       50% { opacity: 0; }
@@ -279,13 +298,25 @@
 
       <!-- Scrollable Message Canvas Viewport -->
       <div id="chat-messages-container" class="flex-1 overflow-y-auto px-4 md:px-8 py-6 relative">
+        <!-- Drag and Drop Overlay -->
+        <div id="drag-drop-overlay"
+          class="hidden absolute inset-4 z-40 bg-surface/90 backdrop-blur-sm border-2 border-dashed border-primary flex flex-col items-center justify-center gap-3 p-6 text-center rounded-3xl pointer-events-none">
+          <div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center text-primary shadow-sm animate-bounce">
+            <span class="material-symbols-outlined text-[32px]">upload_file</span>
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="text-[18px] font-serif font-semibold text-on-surface">Drop your PDF here</span>
+            <span class="text-[13px] text-on-surface-variant">We'll index it with RAG for instant question answering</span>
+          </div>
+        </div>
+
         <div id="chat-messages"
           class="w-full max-w-container-max-width mx-auto flex flex-col gap-stack-gap-md md:gap-stack-gap-lg pb-12">
           <!-- Initial Assistant Welcome Message -->
           <div class="flex w-full fade-in-up" style="animation-delay: 0.1s;">
             <div
               class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">
-              <p class="font-body-md text-body-md leading-relaxed">Hello. How can I assist you today? I'm designed to be fast, clear, and out of your way.</p>
+              <p class="font-body-md text-body-md leading-relaxed">Hello. How can I assist you today? You can ask me anything or upload a PDF document using the attachment icon (📎) to ask questions about its content.</p>
             </div>
           </div>
         </div>
@@ -295,7 +326,7 @@
           class="hidden max-w-container-max-width mx-auto w-full mb-8">
           <div
             class="flex max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 py-3 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] items-center gap-2">
-            <span class="text-[13px] text-on-surface-variant">Thinking</span>
+            <span id="typing-status-text" class="text-[13px] text-on-surface-variant">Thinking</span>
             <div class="typing-dots flex gap-1 items-center">
               <span class="dot"></span>
               <span class="dot"></span>
@@ -308,26 +339,67 @@
       <!-- Bottom Input Area -->
       <div class="shrink-0 w-full px-4 md:px-6 pb-4 pt-2 bg-gradient-to-t from-background via-background/95 to-transparent relative z-20">
         <div class="max-w-container-max-width mx-auto relative">
+          <!-- Attached Documents Bar -->
+          <div id="attached-docs-bar"
+            class="hidden flex flex-wrap items-center gap-2 mb-2 px-3.5 py-2 bg-surface-container-low/90 backdrop-blur-sm border border-surface-variant/80 rounded-2xl shadow-xs transition-all">
+            <span class="flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">
+              <span class="material-symbols-outlined text-[15px] text-primary">description</span>
+              <span>Attached Documents:</span>
+            </span>
+            <div id="attached-docs-list" class="flex flex-wrap items-center gap-1.5 flex-1">
+              <!-- Populated dynamically via app.js -->
+            </div>
+          </div>
+
+          <!-- Hidden File Input for PDF Uploads -->
+          <input type="file" id="pdf-file-input" accept="application/pdf,.pdf" class="hidden" />
+
+          <!-- Chat Input Form -->
           <form id="chat-form"
             class="relative flex items-end bg-surface-container-lowest shadow-[0_12px_40px_rgba(139,121,105,0.15)] rounded-full focus-within:shadow-[0_12px_40px_rgba(224,122,95,0.15)] transition-all duration-300 border border-surface-variant">
-            <textarea id="chat-input" rows="1" placeholder="Message..."
-              class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 py-4 md:py-4.5 pl-6 pr-16 rounded-full m-0 block"></textarea>
+            <!-- PDF Attachment Button -->
+            <button type="button" id="attach-btn"
+              class="p-2.5 ml-2 md:ml-3 mb-1.5 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-variant/70 transition-colors flex items-center justify-center cursor-pointer shrink-0"
+              title="Upload PDF document for RAG analysis">
+              <span class="material-symbols-outlined text-[20px] md:text-[22px]">attach_file</span>
+            </button>
+
+            <!-- Textarea -->
+            <textarea id="chat-input" rows="1" placeholder="Message or ask about your PDF..."
+              class="w-full bg-transparent border-none focus:ring-0 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/60 py-4 md:py-4.5 pl-2 pr-16 rounded-full m-0 block"></textarea>
+            
+            <!-- Send Button -->
             <button type="submit" id="send-btn"
               class="absolute right-2 md:right-3 bottom-2 md:bottom-2 p-2.5 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               title="Send message">
               <span class="material-symbols-outlined text-[20px]">send</span>
             </button>
           </form>
+
           <div class="text-center mt-2 text-[11px] text-on-surface-variant/60 font-body-sm">
-            AI can make mistakes. Verify important information.
+            Upload PDFs to ask questions with RAG • AI can make mistakes.
           </div>
         </div>
       </div>
 
+      <!-- Floating Upload Notification Toast -->
+      <div id="upload-toast"
+        class="hidden fixed bottom-24 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface-container-highest/95 backdrop-blur-md text-on-surface shadow-xl border border-surface-variant/80 transition-all duration-300 max-w-sm">
+        <span id="upload-toast-icon" class="material-symbols-outlined text-primary text-[20px] animate-spin">progress_activity</span>
+        <div class="flex flex-col min-w-0">
+          <span id="upload-toast-title" class="text-[13px] font-medium truncate">Uploading document...</span>
+          <span id="upload-toast-subtitle" class="text-[11px] text-on-surface-variant truncate">Extracting text & generating embeddings</span>
+        </div>
+        <button id="upload-toast-close" class="hidden ml-auto p-1 rounded-lg hover:bg-surface-variant text-on-surface-variant text-[14px]">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+
+
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=2"></script>
 </body>
 
 </html>

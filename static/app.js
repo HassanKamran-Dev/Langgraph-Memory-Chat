@@ -18,6 +18,19 @@
   const sendBtn = document.getElementById("send-btn");
   const sendBtnIcon = sendBtn ? sendBtn.querySelector(".material-symbols-outlined") : null;
   const typingIndicator = document.getElementById("typing-indicator");
+  const typingStatusText = document.getElementById("typing-status-text");
+
+  // RAG Elements
+  const pdfFileInput = document.getElementById("pdf-file-input");
+  const attachBtn = document.getElementById("attach-btn");
+  const attachedDocsBar = document.getElementById("attached-docs-bar");
+  const attachedDocsList = document.getElementById("attached-docs-list");
+  const uploadToast = document.getElementById("upload-toast");
+  const uploadToastTitle = document.getElementById("upload-toast-title");
+  const uploadToastSubtitle = document.getElementById("upload-toast-subtitle");
+  const uploadToastIcon = document.getElementById("upload-toast-icon");
+  const uploadToastClose = document.getElementById("upload-toast-close");
+  const dragDropOverlay = document.getElementById("drag-drop-overlay");
 
   // Storage Keys
   const STORAGE_KEY = "pure_conversation_chats_v1";
@@ -174,32 +187,265 @@
       .replace(/>/g, "&gt;");
   }
 
+  // Preprocess markdown: normalize bullet point symbols like '• ' to standard '- '
+  function preprocessMarkdown(text) {
+    if (!text) return "";
+    return text.replace(/^([ \t]*)•[ \t]+/gm, "$1- ");
+  }
+
+  // Configure Marked.js with custom renderer for code snippets, tables, and links
+  if (window.marked && typeof window.marked.use === "function") {
+    const customRenderer = {
+      code(token) {
+        const text = typeof token === "object" ? (token.text || "") : (token || "");
+        const rawLang = typeof token === "object" ? (token.lang || "") : (arguments[1] || "");
+        const lang = (rawLang.match(/\S*/) || [""])[0];
+        const displayLang = lang || "code";
+
+        let highlighted = escapeHtml(text);
+        if (window.hljs) {
+          if (lang && hljs.getLanguage(lang)) {
+            try {
+              highlighted = hljs.highlight(text, { language: lang, ignoreIllegals: true }).value;
+            } catch (e) {
+              highlighted = escapeHtml(text);
+            }
+          } else {
+            try {
+              highlighted = hljs.highlightAuto(text).value;
+            } catch (e) {
+              highlighted = escapeHtml(text);
+            }
+          }
+        }
+
+        return `<div class="code-container">
+          <div class="code-header">
+            <span class="code-lang">${escapeHtml(displayLang)}</span>
+            <button class="copy-btn" type="button" aria-label="Copy code">
+              <span class="material-symbols-outlined text-[14px]">content_copy</span>
+              <span>Copy</span>
+            </button>
+          </div>
+          <pre><code class="hljs language-${escapeHtml(displayLang)}">${highlighted}</code></pre>
+        </div>`;
+      },
+      table(token) {
+        if (typeof token === "object" && token.header && token.rows) {
+          const headerHtml = "<tr>" + token.header.map((cell, i) => {
+            const align = token.align && token.align[i] ? ` align="${token.align[i]}"` : "";
+            const content = this.parser ? this.parser.parseInline(cell.tokens || []) : escapeHtml(cell.text || "");
+            return `<th${align}>${content}</th>`;
+          }).join("") + "</tr>";
+
+          const bodyHtml = token.rows.map(row => {
+            return "<tr>" + row.map((cell, i) => {
+              const align = token.align && token.align[i] ? ` align="${token.align[i]}"` : "";
+              const content = this.parser ? this.parser.parseInline(cell.tokens || []) : escapeHtml(cell.text || "");
+              return `<td${align}>${content}</td>`;
+            }).join("") + "</tr>";
+          }).join("");
+
+          return `<div class="table-container">
+            <table>
+              <thead>${headerHtml}</thead>
+              <tbody>${bodyHtml}</tbody>
+            </table>
+          </div>`;
+        }
+        return false;
+      },
+      link(token) {
+        const href = typeof token === "object" ? (token.href || "#") : (arguments[0] || "#");
+        const title = typeof token === "object" ? token.title : arguments[1];
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+        const text = typeof token === "object"
+          ? (this.parser ? this.parser.parseInline(token.tokens || []) : escapeHtml(token.text || ""))
+          : arguments[2];
+        return `<a href="${escapeHtml(href)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      }
+    };
+
+    window.marked.use({
+      renderer: customRenderer,
+      gfm: true,
+      breaks: true
+    });
+  }
+
+  // Fallback Markdown parser in case window.marked is unavailable
+  function fallbackMarkdown(text) {
+    if (!text) return "";
+    const lines = text.split("\n");
+    const html = [];
+    let inTable = false;
+    let tableRows = [];
+    let inCode = false;
+    let codeLang = "";
+    let codeLines = [];
+    let inList = false;
+    let listType = "ul";
+
+    function flushTable() {
+      if (tableRows.length === 0) return;
+      const header = tableRows[0];
+      const rows = tableRows.slice(1);
+      const thead = "<tr>" + header.map(c => `<th>${c}</th>`).join("") + "</tr>";
+      const tbody = rows.map(r => "<tr>" + r.map(c => `<td>${c}</td>`).join("") + "</tr>").join("");
+      html.push(`<div class="table-container"><table><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`);
+      tableRows = [];
+      inTable = false;
+    }
+
+    function flushList() {
+      if (inList) {
+        html.push(`</${listType}>`);
+        inList = false;
+      }
+    }
+
+    function formatInline(str) {
+      return str
+        .replace(/`([^`]+)`/g, `<code class="bg-surface-variant/80 px-1.5 py-0.5 rounded font-code-md text-[13px] text-tertiary-container">$1</code>`)
+        .replace(/\*\*([^*]+)\*\*/g, `<strong>$1</strong>`)
+        .replace(/\*([^*]+)\*/g, `<em>$1</em>`)
+        .replace(/_([^_]+)_/g, `<em>$1</em>`)
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, `<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>`);
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Code blocks
+      if (line.trim().startsWith("```")) {
+        if (inCode) {
+          html.push(`<div class="code-container"><div class="code-header"><span class="code-lang">${escapeHtml(codeLang || "code")}</span><button class="copy-btn" type="button"><span class="material-symbols-outlined text-[14px]">content_copy</span><span>Copy</span></button></div><pre><code>${codeLines.join("\n")}</code></pre></div>`);
+          codeLines = [];
+          inCode = false;
+        } else {
+          flushTable();
+          flushList();
+          inCode = true;
+          codeLang = line.trim().slice(3).trim();
+        }
+        continue;
+      }
+      if (inCode) {
+        codeLines.push(escapeHtml(line));
+        continue;
+      }
+
+      // Table line: | col1 | col2 |
+      if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+        flushList();
+        const cells = line.trim().slice(1, -1).split("|").map(c => formatInline(escapeHtml(c.trim())));
+        const isSep = cells.every(c => /^:?-+:?$/.test(c.replace(/<[^>]+>/g, "").trim()));
+        if (!isSep) {
+          tableRows.push(cells);
+        }
+        inTable = true;
+        continue;
+      } else if (inTable) {
+        flushTable();
+      }
+
+      const trimmed = line.trim();
+
+      // Horizontal rule: --- or ***
+      if (/^---+$/.test(trimmed) || /^\*\*\*+$/.test(trimmed)) {
+        flushList();
+        html.push("<hr/>");
+        continue;
+      }
+
+      // Headings: #, ##, ###, ####
+      const hMatch = line.match(/^(#{1,6})\s+(.*)$/);
+      if (hMatch) {
+        flushList();
+        const level = hMatch[1].length;
+        html.push(`<h${level}>${formatInline(escapeHtml(hMatch[2]))}</h${level}>`);
+        continue;
+      }
+
+      // Blockquotes: > quote
+      if (line.startsWith(">")) {
+        flushList();
+        html.push(`<blockquote><p>${formatInline(escapeHtml(line.slice(1).trim()))}</p></blockquote>`);
+        continue;
+      }
+
+      // Unordered lists
+      const ulMatch = line.match(/^(\s*)[-*•]\s+(.*)$/);
+      if (ulMatch) {
+        if (!inList || listType !== "ul") {
+          flushList();
+          html.push("<ul>");
+          inList = true;
+          listType = "ul";
+        }
+        html.push(`<li>${formatInline(escapeHtml(ulMatch[2]))}</li>`);
+        continue;
+      }
+
+      // Ordered lists
+      const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+      if (olMatch) {
+        if (!inList || listType !== "ol") {
+          flushList();
+          html.push("<ol>");
+          inList = true;
+          listType = "ol";
+        }
+        html.push(`<li>${formatInline(escapeHtml(olMatch[2]))}</li>`);
+        continue;
+      }
+
+      flushList();
+
+      if (trimmed === "") {
+        continue;
+      }
+
+      html.push(`<p>${formatInline(escapeHtml(line))}</p>`);
+    }
+
+    if (inTable) flushTable();
+    if (inList) flushList();
+    if (inCode) {
+      html.push(`<div class="code-container"><pre><code>${codeLines.join("\n")}</code></pre></div>`);
+    }
+
+    return html.join("\n");
+  }
+
+  // Format RAG citation badges like [Document: foo.pdf, Page 1] or 【Document: foo.pdf, Page 1】
+  function formatCitations(html) {
+    if (!html) return "";
+    return html.replace(/(?:【|\[)(?:Document:\s*)([^,\]】|]+)(?:[\s,|]+(?:Page\s*)?([0-9]+))?(?:】|\])/gi, function (match, doc, page) {
+      const pageText = page ? ` • p. ${page}` : "";
+      return `<span class="citation-badge"><span class="material-symbols-outlined text-[13px]">description</span>${escapeHtml(doc.trim())}${pageText}</span>`;
+    });
+  }
+
   function formatResponse(text) {
     if (!text) return "";
-    let formatted = escapeHtml(text);
-
-    // Code blocks: ```lang\ncode```
-    formatted = formatted.replace(/```([a-zA-Z0-9_\-#+]*)?\n?([\s\S]*?)```/g, function (match, lang, code) {
-      const languageBadge = lang ? `<span class="text-[11px] font-code-md text-on-surface-variant/70 uppercase">${lang}</span>` : "";
-      return `<div class="bg-surface-variant/50 rounded-2xl p-4 overflow-x-auto my-2.5 border border-surface-dim/70">
-        ${languageBadge}
-        <pre class="font-code-md text-code-md text-on-surface m-0 leading-relaxed mt-1"><code>${code.trim()}</code></pre>
-      </div>`;
-    });
-
-    // Inline code: `code`
-    formatted = formatted.replace(/`([^`]+)`/g, `<code class="bg-surface-variant/80 px-1.5 py-0.5 rounded font-code-md text-[13px] text-tertiary-container">$1</code>`);
-
-    // Bold: **text**
-    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, `<strong>$1</strong>`);
-
-    // Lists
-    formatted = formatted.replace(/^\s*[-*]\s+(.*$)/gim, `<li class="ml-4 list-disc">$1</li>`);
-
-    // Line breaks
-    formatted = formatted.replace(/\n/g, "<br/>");
-
-    return formatted;
+    const cleanText = preprocessMarkdown(text);
+    if (window.marked && typeof window.marked.parse === "function") {
+      try {
+        const rawHtml = window.marked.parse(cleanText, { gfm: true, breaks: true });
+        if (window.DOMPurify && typeof window.DOMPurify.sanitize === "function") {
+          const sanitized = window.DOMPurify.sanitize(rawHtml, {
+            ADD_ATTR: ["target", "rel"]
+          });
+          return formatCitations(sanitized);
+        }
+        return formatCitations(rawHtml);
+      } catch (err) {
+        console.error("Marked parse error:", err);
+      }
+    }
+    // Reliable built-in fallback
+    return formatCitations(fallbackMarkdown(cleanText));
   }
 
   // --- DOM Rendering Methods ---
@@ -246,7 +492,7 @@
     div.innerHTML = `
       <div class="flex flex-col gap-2 max-w-[85%] md:max-w-[75%] bg-surface-container-low text-on-surface px-5 md:px-7 py-4 md:py-5 rounded-[28px] rounded-tl-sm shadow-[0_8px_24px_rgba(139,121,105,0.06)] border-none">
         ${reasoningHtml}
-        <div class="message-content font-body-md text-body-md leading-relaxed">${formatResponse(text)}</div>
+        <div class="message-content prose-chat font-body-md text-body-md leading-relaxed">${formatResponse(text)}</div>
       </div>
     `;
     chatMessages.appendChild(div);
@@ -266,7 +512,7 @@
             <div class="reasoning-content mt-2 text-[12px] font-code-md text-on-surface-variant/90 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto border-t border-surface-dim/40 pt-2"></div>
           </details>
         </div>
-        <div class="message-content font-body-md text-body-md leading-relaxed streaming-cursor"></div>
+        <div class="message-content prose-chat font-body-md text-body-md leading-relaxed streaming-cursor"></div>
       </div>
     `;
     chatMessages.appendChild(div);
@@ -320,6 +566,7 @@
         animFrameId = null;
         if (isStreamDone) {
           contentEl.classList.remove("streaming-cursor");
+          contentEl.innerHTML = formatResponse(targetText);
           finalizeReasoningUi();
           scrollToBottom(true);
         }
@@ -367,6 +614,7 @@
         isStreamDone = true;
         if (!animFrameId) {
           contentEl.classList.remove("streaming-cursor");
+          contentEl.innerHTML = formatResponse(targetText);
           finalizeReasoningUi();
           scrollToBottom(true);
         }
@@ -484,6 +732,7 @@
 
     renderActiveChatMessages();
     renderRecentChats();
+    loadAttachedDocuments(newId);
 
     chatInput.value = "";
     chatInput.style.height = "auto";
@@ -507,6 +756,7 @@
 
     renderActiveChatMessages();
     renderRecentChats();
+    loadAttachedDocuments(chatId);
 
     closeMobileSidebar();
     chatInput.focus();
@@ -615,7 +865,10 @@
     currentAbortController = new AbortController();
     setStreamingState(true);
 
-    if (typingIndicator) typingIndicator.classList.remove("hidden");
+    if (typingIndicator) {
+      if (typingStatusText) typingStatusText.textContent = "Thinking";
+      typingIndicator.classList.remove("hidden");
+    }
     scrollToBottom(true);
 
     let assistantMsgObj = null;
@@ -658,7 +911,12 @@
           try {
             const data = JSON.parse(jsonStr);
 
-            if (data.type === "reasoning") {
+            if (data.type === "status") {
+              if (typingIndicator) {
+                typingIndicator.classList.remove("hidden");
+                if (typingStatusText) typingStatusText.textContent = data.content;
+              }
+            } else if (data.type === "reasoning") {
               if (!assistantMsgObj) {
                 if (typingIndicator) typingIndicator.classList.add("hidden");
                 assistantMsgObj = createStreamingAssistantMessageElement();
@@ -750,7 +1008,223 @@
     }
   });
 
+  // Code Snippet Copy Handler
+  if (chatMessages) {
+    chatMessages.addEventListener("click", function (e) {
+      const copyBtn = e.target.closest(".copy-btn");
+      if (!copyBtn) return;
+      const container = copyBtn.closest(".code-container");
+      if (!container) return;
+      const codeEl = container.querySelector("pre code");
+      if (!codeEl) return;
+
+      const textToCopy = codeEl.innerText || codeEl.textContent;
+      navigator.clipboard.writeText(textToCopy).then(function () {
+        const textSpan = copyBtn.querySelector("span:not(.material-symbols-outlined)");
+        const iconSpan = copyBtn.querySelector(".material-symbols-outlined");
+        const prevText = textSpan ? textSpan.textContent : "Copy";
+        if (textSpan) textSpan.textContent = "Copied!";
+        if (iconSpan) iconSpan.textContent = "check";
+        setTimeout(function () {
+          if (textSpan) textSpan.textContent = prevText;
+          if (iconSpan) iconSpan.textContent = "content_copy";
+        }, 2000);
+      }).catch(function (err) {
+        console.error("Failed to copy code to clipboard:", err);
+      });
+    });
+  }
+
+  // --- RAG Document Management & Upload Logic ---
+
+  function showUploadToast(title, subtitle, isError = false, isLoading = false) {
+    if (!uploadToast) return;
+    uploadToast.classList.remove("hidden");
+    if (uploadToastTitle) uploadToastTitle.textContent = title;
+    if (uploadToastSubtitle) uploadToastSubtitle.textContent = subtitle;
+
+    if (uploadToastIcon) {
+      if (isLoading) {
+        uploadToastIcon.textContent = "progress_activity";
+        uploadToastIcon.className = "material-symbols-outlined text-primary text-[20px] animate-spin";
+      } else if (isError) {
+        uploadToastIcon.textContent = "error";
+        uploadToastIcon.className = "material-symbols-outlined text-error text-[20px]";
+      } else {
+        uploadToastIcon.textContent = "check_circle";
+        uploadToastIcon.className = "material-symbols-outlined text-green-600 text-[20px]";
+      }
+    }
+
+    if (uploadToastClose) {
+      uploadToastClose.classList.remove("hidden");
+      uploadToastClose.onclick = function () {
+        uploadToast.classList.add("hidden");
+      };
+    }
+
+    if (!isLoading) {
+      setTimeout(function () {
+        uploadToast.classList.add("hidden");
+      }, 4000);
+    }
+  }
+
+  async function loadAttachedDocuments(threadId) {
+    if (!attachedDocsBar || !attachedDocsList) return;
+    try {
+      const res = await fetch(`/api/documents?thread_id=${encodeURIComponent(threadId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderAttachedDocuments(data.documents || [], threadId);
+    } catch (e) {
+      console.warn("Could not fetch documents:", e);
+    }
+  }
+
+  function renderAttachedDocuments(docs, threadId) {
+    if (!attachedDocsBar || !attachedDocsList) return;
+    attachedDocsList.innerHTML = "";
+
+    if (!docs || docs.length === 0) {
+      attachedDocsBar.classList.add("hidden");
+      return;
+    }
+
+    attachedDocsBar.classList.remove("hidden");
+
+    docs.forEach(function (doc) {
+      const chip = document.createElement("div");
+      chip.className = "doc-chip";
+      const pageInfo = doc.pages ? ` (${doc.pages} ${doc.pages === 1 ? 'page' : 'pages'})` : "";
+      chip.innerHTML = `
+        <span class="material-symbols-outlined text-[15px] text-primary">picture_as_pdf</span>
+        <span class="max-w-[140px] truncate" title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</span>
+        <span class="text-[10px] text-on-surface-variant/70">${pageInfo}</span>
+        <button type="button" class="delete-doc-btn" title="Remove ${escapeHtml(doc.filename)}">
+          <span class="material-symbols-outlined text-[12px]">close</span>
+        </button>
+      `;
+
+      const delBtn = chip.querySelector(".delete-doc-btn");
+      if (delBtn) {
+        delBtn.addEventListener("click", async function (e) {
+          e.stopPropagation();
+          await deleteAttachedDocument(doc.filename, threadId);
+        });
+      }
+
+      attachedDocsList.appendChild(chip);
+    });
+  }
+
+  async function deleteAttachedDocument(filename, threadId) {
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(filename)}?thread_id=${encodeURIComponent(threadId)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        showUploadToast("Removed", `${filename} removed from this chat`, false, false);
+        await loadAttachedDocuments(threadId);
+      }
+    } catch (e) {
+      showUploadToast("Error", "Could not remove document", true, false);
+    }
+  }
+
+  async function uploadPdfFile(file, threadId) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      showUploadToast("Invalid File Type", "Please select a PDF document (.pdf)", true, false);
+      return;
+    }
+
+    showUploadToast("Indexing Document", `Processing ${file.name}...`, false, true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("thread_id", threadId);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Upload failed");
+      }
+
+      showUploadToast(
+        "Document Ready!",
+        `${data.filename} (${data.pages} pages, ${data.chunks} segments)`,
+        false,
+        false
+      );
+
+      await loadAttachedDocuments(threadId);
+
+      // Helpful input hint
+      if (chatInput) {
+        chatInput.placeholder = `Ask a question about ${file.name}...`;
+        chatInput.focus();
+      }
+    } catch (err) {
+      showUploadToast("Upload Error", err.message, true, false);
+    } finally {
+      if (pdfFileInput) pdfFileInput.value = "";
+    }
+  }
+
+  // File Attachment Button & Hidden File Input Event Listeners
+  if (attachBtn && pdfFileInput) {
+    attachBtn.addEventListener("click", function () {
+      pdfFileInput.click();
+    });
+
+    pdfFileInput.addEventListener("change", function (e) {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        uploadPdfFile(file, state.activeChatId);
+      }
+    });
+  }
+
+  // Drag and Drop PDF handling
+  let dragCounter = 0;
+  window.addEventListener("dragenter", function (e) {
+    if (e.dataTransfer && e.dataTransfer.types && Array.from(e.dataTransfer.types).includes("Files")) {
+      dragCounter++;
+      if (dragDropOverlay) dragDropOverlay.classList.remove("hidden");
+    }
+  });
+
+  window.addEventListener("dragleave", function (e) {
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      if (dragDropOverlay) dragDropOverlay.classList.add("hidden");
+    }
+  });
+
+  window.addEventListener("dragover", function (e) {
+    e.preventDefault();
+  });
+
+  window.addEventListener("drop", function (e) {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dragDropOverlay) dragDropOverlay.classList.add("hidden");
+
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      uploadPdfFile(file, state.activeChatId);
+    }
+  });
+
   // Initial Render on Page Load
   renderActiveChatMessages();
   renderRecentChats();
+  loadAttachedDocuments(state.activeChatId);
 })();

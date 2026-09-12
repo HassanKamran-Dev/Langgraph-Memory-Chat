@@ -6,6 +6,8 @@ A minimalist, high-performance conversational AI application powered by **LangGr
 
 ## 🌟 Features
 
+- **📄 PDF RAG Tool (Retrieval-Augmented Generation)**: Upload any PDF directly via the attachment button (📎) or drag-and-drop. The backend chunks, embeds, and indexes the document using vector similarity with `HuggingFaceEndpointEmbeddings` (and resilient local fallback).
+- **🛠️ LangGraph Tool Calling Agent**: The AI autonomously determines when to invoke the `search_uploaded_documents` tool to fetch relevant excerpts and synthesize answers with precise document and page-level citations (`[Document: file.pdf, Page X]`).
 - **🗂️ Collapsible Sidebar Navigation**: Sleek, responsive sidebar with a desktop toggle and mobile slide-over drawer with backdrop overlay.
 - **➕ One-Click New Chat**: Instantly initialize fresh conversation threads with the "+ New Chat" button or the `Ctrl+N` (`Cmd+N`) shortcut.
 - **💬 Recent Chats History**: Automatically saves conversations with titles derived from your initial prompt, displays active thread indicators, and allows one-click switching and individual chat deletion.

@@ -70,3 +70,7 @@ desktop.ini
 
 # Logs
 *.log
+
+# User Uploaded Documents & Embeddings
+uploads/
+*.npy
