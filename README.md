@@ -67,7 +67,7 @@ sequenceDiagram
 ## 📁 Project Structure
 
 ```text
-Simple-Chatbot/
+Langgraph-Memory-Chat/
 ├── .env.example            # Environment variables template (API keys & DATABASE_URL)
 ├── .gitignore              # Git ignore rules for virtualenv & secrets
 ├── README.md               # Project documentation
@@ -96,8 +96,8 @@ Simple-Chatbot/
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/HassanKamran-Dev/Simple-Chatbot.git
-cd Simple-Chatbot
+git clone https://github.com/HassanKamran-Dev/Langgraph-Memory-Chat.git
+cd Langgraph-Memory-Chat
 ```
 
 ### 3. Create & Activate Virtual Environment
