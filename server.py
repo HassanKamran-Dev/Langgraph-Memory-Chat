@@ -1,6 +1,9 @@
 import os
 import sys
 import json
+import asyncio
+import selectors
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
@@ -11,7 +14,24 @@ import rag_service
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(title="Pure Conversation - LangGraph Chatbot")
+
+# ---------------------------------------------------------------------------
+# Lifespan: initialise Postgres-backed checkpointer on startup, tear down on
+# shutdown so connections are released cleanly.
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup — eagerly initialise the compiled graph (and Postgres pool)
+    import langgraph_backend
+    await langgraph_backend.get_compiled_graph()
+    print("[startup] PostgreSQL checkpointer initialised — long-term memory active")
+    yield
+    # Shutdown — close the Postgres connection pool
+    await langgraph_backend.close_pool()
+    print("[shutdown] PostgreSQL connection pool closed")
+
+
+app = FastAPI(title="Pure Conversation - LangGraph Chatbot", lifespan=lifespan)
 
 # Prevent browser from serving stale cached assets during development
 @app.middleware("http")
@@ -32,23 +52,11 @@ class ChatRequest(BaseModel):
     thread_id: str = "default-thread"
 
 
-_cached_backend = None
+async def get_chat_bot():
+    """Return the compiled LangGraph graph backed by AsyncPostgresSaver."""
+    import langgraph_backend
+    return await langgraph_backend.get_compiled_graph()
 
-
-def get_chat_bot():
-    global _cached_backend
-    if _cached_backend is None:
-        import langgraph_backend
-        _cached_backend = langgraph_backend
-
-    for name in ["chat_bot", "chatbot", "graph", "app", "bot"]:
-        if hasattr(_cached_backend, name):
-            return getattr(_cached_backend, name)
-
-    raise ValueError(
-        "No compiled graph found in `langgraph_backend.py`. "
-        "Please ensure your compiled graph is assigned to `chat_bot = graph.compile(...)`."
-    )
 
 
 @app.get("/")
@@ -66,7 +74,7 @@ async def get_index():
 @app.get("/api/status")
 async def get_status():
     try:
-        chat_bot = get_chat_bot()
+        chat_bot = await get_chat_bot()
         return {"status": "ok", "backend_ready": chat_bot is not None}
     except Exception as e:
         return {"status": "error", "detail": str(e), "backend_ready": False}
@@ -128,16 +136,20 @@ async def chat_stream_endpoint(request: ChatRequest):
 
     async def event_generator():
         try:
-            chat_bot = get_chat_bot()
+            chat_bot = await get_chat_bot()
             from langchain_core.messages import HumanMessage
 
-            config = {"configurable": {"thread_id": thread_id}}
+            config = {"configurable": {"thread_id": thread_id, "user_id": "default"}}
             input_data = {"messages": [HumanMessage(content=message_text)]}
 
             async for chunk, metadata in chat_bot.astream(
                 input_data, config=config, stream_mode="messages"
             ):
                 node = metadata.get("langgraph_node")
+
+                # Skip chunks from memory-extraction node (not user-visible)
+                if node == "save_memories":
+                    continue
 
                 # If from tools execution node, notify frontend with a status event
                 if node == "tools":
@@ -210,16 +222,16 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     try:
-        chat_bot = get_chat_bot()
+        chat_bot = await get_chat_bot()
 
         # Prepare LangGraph input format
         from langchain_core.messages import HumanMessage
 
-        config = {"configurable": {"thread_id": thread_id}}
+        config = {"configurable": {"thread_id": thread_id, "user_id": "default"}}
         input_data = {"messages": [HumanMessage(content=message_text)]}
 
         # Invoke LangGraph with thread configuration
-        result = chat_bot.invoke(input_data, config=config)
+        result = await chat_bot.ainvoke(input_data, config=config)
 
         # Extract latest AI message from result
         response_text = ""
@@ -250,4 +262,18 @@ async def chat_endpoint(request: ChatRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+
+    async def _serve():
+        config = uvicorn.Config(app, host="127.0.0.1", port=8000)
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    # On Windows, psycopg async needs SelectorEventLoop (not ProactorEventLoop).
+    # Python 3.14 deprecated set_event_loop_policy, so we pass loop_factory directly.
+    if sys.platform == "win32":
+        asyncio.run(
+            _serve(),
+            loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()),
+        )
+    else:
+        asyncio.run(_serve())
