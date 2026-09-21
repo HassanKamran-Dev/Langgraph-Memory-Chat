@@ -1,7 +1,5 @@
 # Pure Conversation - LangGraph Chatbot 🤖✨
 
-A minimalist, high-performance conversational AI application powered by **LangGraph**, **Groq** (with Hugging Face support), and **FastAPI**, featuring a frontend crafted directly from the Google Stitch **"Pure Conversation UI"** design system.
-
 ---
 
 ## 🌟 Features
