@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+BASE_UPLOADS_DIR = "/tmp/uploads"
 os.makedirs(BASE_UPLOADS_DIR, exist_ok=True)
 
 # In-memory document store keyed by thread_id
